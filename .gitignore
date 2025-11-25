@@ -48,6 +48,9 @@ htmlcov/
 .vscode/
 .idea/
 *.swp
+
+# Streamlit
+.streamlit/secrets.toml
 *.swo
 .DS_Store
 
