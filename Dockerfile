@@ -5,16 +5,16 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY api/requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY app.py .
-COPY feature_extractor.py .
-COPY mejor_modelo.pkl .
-COPY scaler.pkl .
+COPY api/app.py .
+COPY api/feature_extractor.py .
+COPY api/mejor_modelo.pkl .
+COPY api/scaler.pkl .
 
 # Expose port
 EXPOSE 8000
