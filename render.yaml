@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: cybersentinel-api
+    env: docker
+    repo: https://github.com/Dxnn017/CyberSentinel
+    branch: main
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
