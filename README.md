@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=32&duration=2800&pause=2000&color=06B6D4&center=true&vCenter=true&width=940&lines=🛡️+CyberSentinel+API;AI-Powered+Phishing+Detection;99.47%25+Accuracy+Rate" alt="Typing SVG" />
-
 # 🚀 Phishing Detection Backend with AI
 
 ### 🧠 Machine Learning Engine | 🔍 Real-Time Analysis | ⚡ High-Performance REST API
