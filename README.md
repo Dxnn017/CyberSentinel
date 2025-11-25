@@ -2,20 +2,60 @@
 
 Sistema de Detección de Phishing basado en Inteligencia Artificial desarrollado en la Universidad Privada Antenor Orrego.
 
-API REST que analiza URLs para detectar sitios web de phishing usando un modelo LightGBM entrenado con 450,000+ URLs.
+API REST desplegada que analiza URLs para detectar sitios web de phishing usando un modelo LightGBM entrenado con 450,000+ URLs.
+
+## 🌐 API en Producción
+
+**URL de la API:** https://cybersentinel-csdr.onrender.com
+
+**Endpoints disponibles:**
+- `GET /` - Información general
+- `GET /health` - Estado del sistema
+- `POST /analyze` - Analizar URLs
 
 ## 📋 Descripción
 
-Sistema automatizado de detección de phishing que analiza características de URLs y el contenido de páginas web para clasificarlas como **legítimas** o **fraudulentas**. 
+Sistema automatizado de detección de phishing que analiza características de URLs para clasificarlas como **legítimas** o **fraudulentas**. 
 
 El sistema:
 - ✅ Extrae automáticamente 19 características de las URLs
 - ✅ Usa un modelo LightGBM entrenado (99.47% accuracy)
 - ✅ Proporciona predicciones en tiempo real
 - ✅ Incluye análisis heurístico de riesgo
-- ✅ API REST lista para producción
+- ✅ API REST desplegada en Render
+- ✅ Dockerizada y lista para producción
 
-## 🚀 Instalación
+## 🚀 Uso de la API
+
+### Usando curl
+
+```bash
+# Health check
+curl https://cybersentinel-csdr.onrender.com/health
+
+# Analizar una URL
+curl -X POST https://cybersentinel-csdr.onrender.com/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://google.com"}'
+```
+
+### Usando Python
+
+```python
+import requests
+
+# Analizar una URL
+response = requests.post(
+    "https://cybersentinel-csdr.onrender.com/analyze",
+    json={"url": "https://google.com"}
+)
+
+result = response.json()
+print(f"Es phishing: {result['is_phishing']}")
+print(f"Confianza: {result['confidence']*100:.2f}%")
+```
+
+## 🛠️ Instalación Local
 
 ### 1. Clonar el repositorio
 
@@ -27,35 +67,30 @@ cd CyberSentinel
 ### 2. Instalar dependencias
 
 ```bash
+cd api
 pip install -r requirements.txt
 ```
 
-### 3. Verificar archivos del modelo
-
-Asegúrate de tener estos archivos en el directorio raíz:
-- `mejor_modelo.pkl` - Modelo LightGBM entrenado
-- `scaler.pkl` - Normalizador MinMaxScaler
-
-## ▶️ Ejecutar la API
+### 3. Ejecutar localmente
 
 ```bash
+cd api
 python app.py
-```
-
-O usando uvicorn directamente:
-
-```bash
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 La API estará disponible en: `http://localhost:8000`
 
-## 📚 Documentación
+## 🐳 Despliegue con Docker
 
-Una vez que la API esté corriendo, puedes acceder a:
+```bash
+docker build -t cybersentinel .
+docker run -p 8000:8000 cybersentinel
+```
 
-- **Documentación interactiva (Swagger UI)**: http://localhost:8000/docs
-- **Documentación alternativa (ReDoc)**: http://localhost:8000/redoc
+## 📚 Documentación de la API
+
+- **Documentación interactiva (Swagger UI)**: https://cybersentinel-csdr.onrender.com/docs
+- **Documentación alternativa (ReDoc)**: https://cybersentinel-csdr.onrender.com/redoc
 
 ## 🔌 Endpoints
 
@@ -319,18 +354,31 @@ El sistema analiza **19 características** de cada URL:
 
 ```
 CyberSentinel/
-├── app.py                    # API FastAPI
-├── feature_extractor.py      # Extractor de características
-├── mejor_modelo.pkl          # Modelo LightGBM entrenado
-├── scaler.pkl               # MinMaxScaler para normalización
-├── requirements.txt         # Dependencias Python
-├── README.md               # Documentación
+├── api/                      # API y modelo
+│   ├── app.py               # FastAPI application
+│   ├── feature_extractor.py # Extractor de características
+│   ├── mejor_modelo.pkl     # Modelo LightGBM entrenado
+│   ├── scaler.pkl           # MinMaxScaler
+│   └── requirements.txt     # Dependencias Python
 ├── dataset/
-│   └── URL dataset.csv     # Dataset original (450K URLs)
-└── project_ia/
-    ├── Proyecto_IA.ipynb   # Notebook de entrenamiento
-    └── Proyecto de Inteligencia Artificial.pdf
+│   └── URL dataset.csv      # Dataset (450K URLs)
+├── project_ia/
+│   ├── Proyecto_IA.ipynb    # Notebook de entrenamiento
+│   ├── X_test_scaled.npy    # Datos de test
+│   └── y_test.npy           # Etiquetas de test
+├── Dockerfile               # Container configuration
+├── render.yaml              # Render deployment config
+├── .gitignore
+└── README.md
 ```
+
+## 🚀 Despliegue
+
+La API está desplegada en **Render** usando Docker:
+- URL: https://cybersentinel-csdr.onrender.com
+- Plan: Free tier
+- Auto-deploy desde rama `main`
+- Health checks en `/health`
 
 ## 📝 Notas Técnicas
 
