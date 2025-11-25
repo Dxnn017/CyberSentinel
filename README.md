@@ -1,22 +1,40 @@
-# CyberSentinel API
+# 🛡️ CyberSentinel
 
-API REST para predicción de amenazas cibernéticas usando un modelo LightGBM.
+Sistema de Detección de Phishing basado en Inteligencia Artificial desarrollado en la Universidad Privada Antenor Orrego.
+
+API REST que analiza URLs para detectar sitios web de phishing usando un modelo LightGBM entrenado con 450,000+ URLs.
 
 ## 📋 Descripción
 
-Esta API permite realizar predicciones usando un modelo de machine learning entrenado (LGBMClassifier) que requiere 38 características de entrada para clasificar amenazas.
+Sistema automatizado de detección de phishing que analiza características de URLs y el contenido de páginas web para clasificarlas como **legítimas** o **fraudulentas**. 
+
+El sistema:
+- ✅ Extrae automáticamente 19 características de las URLs
+- ✅ Usa un modelo LightGBM entrenado (99.47% accuracy)
+- ✅ Proporciona predicciones en tiempo real
+- ✅ Incluye análisis heurístico de riesgo
+- ✅ API REST lista para producción
 
 ## 🚀 Instalación
 
-### 1. Instalar dependencias
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/Dxnn017/CyberSentinel.git
+cd CyberSentinel
+```
+
+### 2. Instalar dependencias
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Verificar que el modelo esté presente
+### 3. Verificar archivos del modelo
 
-Asegúrate de que el archivo `mejor_modelo.pkl` esté en el directorio raíz del proyecto.
+Asegúrate de tener estos archivos en el directorio raíz:
+- `mejor_modelo.pkl` - Modelo LightGBM entrenado
+- `scaler.pkl` - Normalizador MinMaxScaler
 
 ## ▶️ Ejecutar la API
 
@@ -72,14 +90,31 @@ Verificar el estado de la API
 }
 ```
 
-### 3. POST `/predict`
-Realizar predicción con el modelo
+### 3. POST `/analyze`
+**Analiza una URL y devuelve predicción completa**
 
 **Request Body (JSON):**
 ```json
 {
-  "url_length": 50.0,
-  "domain_length": 15.0,
+  "url": "https://www.example.com"
+}
+```
+
+**Respuesta:**
+```json
+{
+  "url": "https://www.example.com",
+  "is_phishing": false,
+  "confidence": 0.9967,
+  "risk_level": "seguro",
+  "prediction": 1,
+  "probabilities": {
+    "phishing": 0.0032,
+    "legitimate": 0.9967
+  },
+  "features": {
+    "url_length": 22.0,
+    "domain_length": 14.0,
   "num_subdomains": 2.0,
   "has_at_symbol": 0.0,
   "num_hyphens": 1.0,
@@ -137,7 +172,39 @@ Realizar predicción con el modelo
 
 ## 🧪 Probar la API
 
-### Usando curl:
+### Ejemplo 1: URL Legítima
+
+```bash
+curl -X POST "http://localhost:8000/analyze" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.google.com"}'
+```
+
+### Ejemplo 2: URL Sospechosa
+
+```bash
+curl -X POST "http://localhost:8000/analyze" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "http://secure-login-verify.suspicious-site.com/update.php?id=123"}'
+```
+
+### Ejemplo 3: Usando Python
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/analyze",
+    json={"url": "https://www.example.com"}
+)
+
+result = response.json()
+print(f"Is Phishing: {result['is_phishing']}")
+print(f"Confidence: {result['confidence']:.2%}")
+print(f"Risk Level: {result['risk_level']}")
+```
+
+### Ejemplo antiguo con características manuales:
 
 ```bash
 curl -X POST "http://localhost:8000/predict" \
@@ -194,35 +261,80 @@ pip install requests
 python test_api.py
 ```
 
-## 📦 Características del Modelo
+## 🔍 Características Extraídas Automáticamente
 
-El modelo requiere 38 características de entrada:
+El sistema analiza **19 características** de cada URL:
 
-1. **Características de URL:**
-   - url_length, domain_length, path_length, tld_length
-   - num_subdomains, num_slashes, num_dots, num_hyphens, num_underscores
-   - num_parameters, num_digits, num_special_chars
+### 1. Características Estructurales
+- `url_length` - Longitud total de la URL
+- `domain_length` - Longitud del dominio
+- `path_length` - Longitud del path
+- `tld_length` - Longitud del TLD (.com, .net, etc.)
+- `num_subdomains` - Cantidad de subdominios
+- `num_slashes` - Cantidad de barras (/)
+- `num_dots` - Cantidad de puntos
+- `num_hyphens` - Cantidad de guiones (-)
+- `num_underscores` - Cantidad de guiones bajos (_)
+- `num_parameters` - Cantidad de parámetros URL
+- `num_digits` - Cantidad de dígitos
+- `num_special_chars` - Cantidad de caracteres especiales
 
-2. **Indicadores binarios:**
-   - has_at_symbol, has_ip, is_https
+### 2. Indicadores de Seguridad
+- `is_https` - Usa protocolo HTTPS (1=Sí, 0=No)
+- `has_at_symbol` - Contiene símbolo @ (1=Sí, 0=No)
+- `has_ip` - Contiene dirección IP (1=Sí, 0=No)
 
-3. **Métricas calculadas:**
-   - entropy, digit_ratio, suspicious_keywords, risk_score
+### 3. Análisis Heurístico
+- `suspicious_keywords` - Palabras clave sospechosas (login, verify, account, etc.)
+- `entropy` - Entropía de la URL (medida de aleatoriedad)
+- `digit_ratio` - Ratio de dígitos respecto al total
+- `risk_score` - Puntuación heurística de riesgo (0-16)
 
-4. **Características adicionales:**
-   - feature_0 a feature_18 (19 características adicionales)
+**Nota:** El modelo usa 38 características internamente (19 originales + 19 normalizadas con MinMaxScaler)
 
 ## 🛠️ Tecnologías
 
-- **FastAPI**: Framework web moderno y rápido
-- **LightGBM**: Modelo de gradient boosting
-- **Uvicorn**: Servidor ASGI de alto rendimiento
-- **Pydantic**: Validación de datos
-- **scikit-learn**: Herramientas de ML
-- **NumPy**: Computación numérica
+### Backend
+- **FastAPI** - Framework web moderno y de alto rendimiento
+- **LightGBM** - Modelo de gradient boosting (99.47% accuracy)
+- **scikit-learn** - MinMaxScaler para normalización
+- **Uvicorn** - Servidor ASGI
+- **Pydantic** - Validación de datos
 
-## 📝 Notas
+### Procesamiento
+- **tldextract** - Análisis de dominios
+- **NumPy** - Computación numérica
+- **joblib** - Serialización del modelo
 
-- El modelo debe cargarse con `joblib.load()` en lugar de `pickle.load()`
-- Todas las características deben ser de tipo `float`
-- Las 38 características son obligatorias para hacer predicciones
+## 📊 Rendimiento del Modelo
+
+- **Accuracy**: 99.47%
+- **Precision**: 99.5%
+- **Recall**: 99.4%
+- **F1-Score**: 99.5%
+- **Dataset**: 450,177 URLs
+- **Algoritmo**: LightGBM Classifier
+
+## 📁 Estructura del Proyecto
+
+```
+CyberSentinel/
+├── app.py                    # API FastAPI
+├── feature_extractor.py      # Extractor de características
+├── mejor_modelo.pkl          # Modelo LightGBM entrenado
+├── scaler.pkl               # MinMaxScaler para normalización
+├── requirements.txt         # Dependencias Python
+├── README.md               # Documentación
+├── dataset/
+│   └── URL dataset.csv     # Dataset original (450K URLs)
+└── project_ia/
+    ├── Proyecto_IA.ipynb   # Notebook de entrenamiento
+    └── Proyecto de Inteligencia Artificial.pdf
+```
+
+## 📝 Notas Técnicas
+
+- El modelo usa **38 características** internamente (19 originales + 19 normalizadas)
+- La normalización se hace automáticamente con `scaler.pkl`
+- El endpoint `/analyze` solo requiere la URL como entrada
+- Las predicciones son en tiempo real (< 100ms)

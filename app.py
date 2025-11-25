@@ -1,132 +1,75 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel, Field, HttpUrl
 import joblib
 import numpy as np
-from typing import List
+from typing import Dict
 import uvicorn
+from feature_extractor import URLFeatureExtractor
 
-# Cargar el modelo al iniciar la aplicación
+# Cargar el modelo y el scaler al iniciar la aplicación
 try:
     model = joblib.load('mejor_modelo.pkl')
     print("✓ Modelo cargado exitosamente")
+    print(f"  Tipo: {type(model).__name__}")
+    print(f"  Características esperadas: {model.n_features_in_ if hasattr(model, 'n_features_in_') else 'N/A'}")
 except Exception as e:
     print(f"✗ Error al cargar el modelo: {e}")
     model = None
 
+try:
+    scaler = joblib.load('scaler.pkl')
+    print("✓ Scaler cargado exitosamente")
+except Exception as e:
+    print(f"✗ Error al cargar el scaler: {e}")
+    scaler = None
+
+# Inicializar extractor de características
+extractor = URLFeatureExtractor()
+
 app = FastAPI(
     title="CyberSentinel API",
-    description="API para predicción de amenazas usando modelo LightGBM",
+    description="Sistema de Detección de Phishing basado en Inteligencia Artificial - Universidad Privada Antenor Orrego",
     version="1.0.0"
 )
 
-# Modelo de datos para la entrada
-class PredictionInput(BaseModel):
-    """
-    Datos de entrada para el modelo de predicción.
-    El modelo requiere 38 características.
-    """
-    url_length: float = Field(..., description="Longitud de la URL")
-    domain_length: float = Field(..., description="Longitud del dominio")
-    num_subdomains: float = Field(..., description="Número de subdominios")
-    has_at_symbol: float = Field(..., description="Tiene símbolo @")
-    num_hyphens: float = Field(..., description="Número de guiones")
-    num_underscores: float = Field(..., description="Número de guiones bajos")
-    num_slashes: float = Field(..., description="Número de barras")
-    num_dots: float = Field(..., description="Número de puntos")
-    is_https: float = Field(..., description="Es HTTPS")
-    num_digits: float = Field(..., description="Número de dígitos")
-    num_parameters: float = Field(..., description="Número de parámetros")
-    path_length: float = Field(..., description="Longitud del path")
-    has_ip: float = Field(..., description="Tiene dirección IP")
-    suspicious_keywords: float = Field(..., description="Palabras clave sospechosas")
-    entropy: float = Field(..., description="Entropía")
-    num_special_chars: float = Field(..., description="Número de caracteres especiales")
-    digit_ratio: float = Field(..., description="Ratio de dígitos")
-    tld_length: float = Field(..., description="Longitud del TLD")
-    risk_score: float = Field(..., description="Puntuación de riesgo")
-    feature_0: float = Field(..., description="Característica 0")
-    feature_1: float = Field(..., description="Característica 1")
-    feature_2: float = Field(..., description="Característica 2")
-    feature_3: float = Field(..., description="Característica 3")
-    feature_4: float = Field(..., description="Característica 4")
-    feature_5: float = Field(..., description="Característica 5")
-    feature_6: float = Field(..., description="Característica 6")
-    feature_7: float = Field(..., description="Característica 7")
-    feature_8: float = Field(..., description="Característica 8")
-    feature_9: float = Field(..., description="Característica 9")
-    feature_10: float = Field(..., description="Característica 10")
-    feature_11: float = Field(..., description="Característica 11")
-    feature_12: float = Field(..., description="Característica 12")
-    feature_13: float = Field(..., description="Característica 13")
-    feature_14: float = Field(..., description="Característica 14")
-    feature_15: float = Field(..., description="Característica 15")
-    feature_16: float = Field(..., description="Característica 16")
-    feature_17: float = Field(..., description="Característica 17")
-    feature_18: float = Field(..., description="Característica 18")
-
+# Modelo de entrada para análisis de URL
+class URLInput(BaseModel):
+    url: str = Field(..., description="URL completa a analizar")
+    
     class Config:
         json_schema_extra = {
             "example": {
-                "url_length": 50.0,
-                "domain_length": 15.0,
-                "num_subdomains": 2.0,
-                "has_at_symbol": 0.0,
-                "num_hyphens": 1.0,
-                "num_underscores": 0.0,
-                "num_slashes": 3.0,
-                "num_dots": 2.0,
-                "is_https": 1.0,
-                "num_digits": 5.0,
-                "num_parameters": 1.0,
-                "path_length": 20.0,
-                "has_ip": 0.0,
-                "suspicious_keywords": 0.0,
-                "entropy": 3.5,
-                "num_special_chars": 5.0,
-                "digit_ratio": 0.1,
-                "tld_length": 3.0,
-                "risk_score": 0.2,
-                "feature_0": 0.0,
-                "feature_1": 0.0,
-                "feature_2": 0.0,
-                "feature_3": 0.0,
-                "feature_4": 0.0,
-                "feature_5": 0.0,
-                "feature_6": 0.0,
-                "feature_7": 0.0,
-                "feature_8": 0.0,
-                "feature_9": 0.0,
-                "feature_10": 0.0,
-                "feature_11": 0.0,
-                "feature_12": 0.0,
-                "feature_13": 0.0,
-                "feature_14": 0.0,
-                "feature_15": 0.0,
-                "feature_16": 0.0,
-                "feature_17": 0.0,
-                "feature_18": 0.0
+                "url": "https://www.google.com"
             }
         }
 
 # Modelo de respuesta
-class PredictionOutput(BaseModel):
-    prediction: int = Field(..., description="Predicción del modelo (0 o 1)")
-    probability: float = Field(..., description="Probabilidad de la clase predicha")
-    probabilities: List[float] = Field(..., description="Probabilidades de todas las clases [clase_0, clase_1]")
-    risk_level: str = Field(..., description="Nivel de riesgo: bajo, medio, alto")
+class AnalysisOutput(BaseModel):
+    url: str = Field(..., description="URL analizada")
+    is_phishing: bool = Field(..., description="True si es phishing, False si es legítima")
+    confidence: float = Field(..., description="Nivel de confianza de la predicción (0-1)")
+    risk_level: str = Field(..., description="Nivel de riesgo: seguro, medio, alto")
+    prediction: int = Field(..., description="0=Phishing, 1=Legítima")
+    probabilities: Dict[str, float] = Field(..., description="Probabilidades por clase")
+    features: Dict[str, float] = Field(..., description="Características extraídas de la URL")
+    heuristic_score: int = Field(..., description="Puntuación heurística de riesgo (0-16)")
 
 @app.get("/")
 def read_root():
     """Endpoint raíz con información de la API"""
     return {
-        "message": "CyberSentinel API",
+        "message": "CyberSentinel - Sistema de Detección de Phishing",
         "version": "1.0.0",
+        "universidad": "Universidad Privada Antenor Orrego",
         "status": "running",
         "model_loaded": model is not None,
         "endpoints": {
-            "predict": "/predict (POST)",
-            "health": "/health (GET)",
-            "docs": "/docs (GET)"
+            "analyze": "/analyze (POST) - Analiza una URL para detectar phishing",
+            "health": "/health (GET) - Verifica el estado del sistema",
+            "docs": "/docs (GET) - Documentación interactiva",
+            "redoc": "/redoc (GET) - Documentación alternativa"
         }
     }
 
@@ -140,88 +83,75 @@ def health_check():
         "status": "healthy",
         "model_loaded": True,
         "model_type": type(model).__name__,
-        "n_features": len(model.feature_names_in_) if hasattr(model, 'feature_names_in_') else None
+        "n_features": model.n_features_in_ if hasattr(model, 'n_features_in_') else None,
+        "feature_extractor": "URLFeatureExtractor v1.0"
     }
 
-@app.post("/predict", response_model=PredictionOutput)
-def predict(data: PredictionInput):
+@app.post("/analyze", response_model=AnalysisOutput)
+def analyze_url(data: URLInput):
     """
-    Realizar predicción con el modelo.
+    Analiza una URL para detectar si es phishing o legítima.
+    
+    El sistema extrae automáticamente 19 características de la URL incluyendo:
+    - Características estructurales (longitud, subdominios, etc.)
+    - Indicadores de seguridad (HTTPS, IP, etc.)
+    - Análisis heurístico (palabras sospechosas, entropía, etc.)
     
     Args:
-        data: Objeto con las 38 características requeridas por el modelo
+        data: Objeto con la URL a analizar
         
     Returns:
-        Predicción, probabilidad y nivel de riesgo
+        Análisis completo incluyendo predicción, confianza y características extraídas
     """
     if model is None:
         raise HTTPException(status_code=503, detail="Modelo no disponible")
     
     try:
-        # Convertir los datos de entrada a un array numpy en el orden correcto
-        features = np.array([[
-            data.url_length,
-            data.domain_length,
-            data.num_subdomains,
-            data.has_at_symbol,
-            data.num_hyphens,
-            data.num_underscores,
-            data.num_slashes,
-            data.num_dots,
-            data.is_https,
-            data.num_digits,
-            data.num_parameters,
-            data.path_length,
-            data.has_ip,
-            data.suspicious_keywords,
-            data.entropy,
-            data.num_special_chars,
-            data.digit_ratio,
-            data.tld_length,
-            data.risk_score,
-            data.feature_0,
-            data.feature_1,
-            data.feature_2,
-            data.feature_3,
-            data.feature_4,
-            data.feature_5,
-            data.feature_6,
-            data.feature_7,
-            data.feature_8,
-            data.feature_9,
-            data.feature_10,
-            data.feature_11,
-            data.feature_12,
-            data.feature_13,
-            data.feature_14,
-            data.feature_15,
-            data.feature_16,
-            data.feature_17,
-            data.feature_18
-        ]])
+        url = data.url
+        
+        # Extraer características de la URL
+        features_dict = extractor.extract_features(url)
+        features_array = extractor.extract_features_array(url, scaler=scaler)
         
         # Realizar predicción
-        prediction = int(model.predict(features)[0])
-        probabilities = model.predict_proba(features)[0].tolist()
-        probability = probabilities[prediction]
+        prediction = int(model.predict(features_array)[0])
+        probabilities = model.predict_proba(features_array)[0].tolist()
+        
+        # prediction: 0=Phishing, 1=Legítima
+        is_phishing = (prediction == 0)
+        confidence = probabilities[prediction]
         
         # Determinar nivel de riesgo
-        if prediction == 0:
-            risk_level = "bajo"
-        elif probability < 0.7:
-            risk_level = "medio"
+        if is_phishing:
+            if confidence >= 0.9:
+                risk_level = "alto"
+            elif confidence >= 0.7:
+                risk_level = "medio"
+            else:
+                risk_level = "bajo"
         else:
-            risk_level = "alto"
+            risk_level = "seguro"
         
-        return PredictionOutput(
+        return AnalysisOutput(
+            url=url,
+            is_phishing=is_phishing,
+            confidence=confidence,
+            risk_level=risk_level,
             prediction=prediction,
-            probability=probability,
-            probabilities=probabilities,
-            risk_level=risk_level
+            probabilities={
+                "phishing": probabilities[0],
+                "legitimate": probabilities[1]
+            },
+            features=features_dict,
+            heuristic_score=features_dict['risk_score']
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en la predicción: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error en el análisis: {str(e)}")
 
 if __name__ == "__main__":
+    print("\n" + "="*70)
+    print("  🛡️  CYBERSENTINEL - Sistema de Detección de Phishing")
+    print("  📚  Universidad Privada Antenor Orrego")
+    print("="*70 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=8000)
